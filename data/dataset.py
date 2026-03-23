@@ -34,7 +34,7 @@ def get_transforms():
     return Compose([
         LoadImaged(keys=["image", "label"]),
         EnsureChannelFirstd(keys=["image", "label"]),
-        Orientationd(keys=["image", "label"], axcodes="RAS"),
+        Orientationd(keys=["image", "label"], axcodes="RAS", labels=None),
         NormalizeIntensityd(keys=["image"], channel_wise=True, nonzero=True),
     ])
 
@@ -48,7 +48,7 @@ class BraTSSliceDataset(Dataset):
         print(f"Loading {len(data_dicts)} volumes...")
         self.volume_ds = CacheDataset(
             data_dicts, transform,
-            cache_rate=0.25,
+            cache_rate=1.0,
             num_workers=config.NUM_WORKERS,
         )
 
@@ -90,7 +90,7 @@ def get_fold_dataloaders(fold, data_dicts):
     train_dataset = BraTSSliceDataset(train_dicts, get_transforms())
     val_dataset = BraTSSliceDataset(validation_dicts, get_transforms())
 
-    train_loader = DataLoader(train_dataset, batch_size=config.BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=config.BATCH_SIZE, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=config.BATCH_SIZE, shuffle=False, num_workers=config.NUM_WORKERS, pin_memory=True)
 
     return train_loader, val_loader
