@@ -53,7 +53,7 @@ def preprocess_slices(data_dicts):
     os.makedirs(PREPROCESSED_DIR, exist_ok=True)
     transform = get_transforms()
 
-    print("Preprocessing volumes to 2D slices (one-time operation)...")
+    print("Preprocessing volumes to 2D slices")
     for vol_idx, data_dict in enumerate(tqdm(data_dicts, desc="Volumes")):
         vol = transform(data_dict)
         image = vol["image"]
@@ -71,7 +71,7 @@ def preprocess_slices(data_dicts):
                 save_path = os.path.join(PREPROCESSED_DIR, f"vol{vol_idx:04d}_s{s:04d}.pt")
                 torch.save({"image": img_slice, "label": lbl_slice}, save_path)
 
-    print(f"Preprocessing done. Saved to {PREPROCESSED_DIR}")
+    print(f"Preprocessing done")
 
 
 class PreprocessedSliceDataset(Dataset):

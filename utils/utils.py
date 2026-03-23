@@ -6,8 +6,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from medpy.metric.binary import hd95
 
-import config
-
 region_names = ["WT", "TC", "ET"]
 
 def save_checkpoint(model, path):
@@ -15,8 +13,8 @@ def save_checkpoint(model, path):
     torch.save(model.state_dict(), path)
  
  
-def load_checkpoint(model, path):
-    model.load_state_dict(torch.load(path, map_location=config.DEVICE))
+def load_checkpoint(model, path, device):
+    model.load_state_dict(torch.load(path, map_location=device))
     return model
  
  

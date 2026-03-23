@@ -6,11 +6,12 @@ from monai.transforms import Compose, LoadImaged, EnsureChannelFirstd, Orientati
 import numpy as np
 import os
 import argparse
+import torch
 
 import config
 
 
-def run_crossval():
+def run_crossval(device):
     # Train and eval on 5-fold cross-val
     data_dicts = get_file_list(config.DATA_DIR)
     all_results = []
@@ -18,7 +19,7 @@ def run_crossval():
     # Execution per each of the 5 folds
     for fold in range(5):
         train_loader, val_loader= get_fold_dataloaders(fold, data_dicts)
-        fold_results = train_fold(train_loader, val_loader, val_loader.dataset, fold)
+        fold_results = train_fold(train_loader, val_loader, val_loader.dataset, fold, device)
         all_results.append(fold_results)
 
     # Showing all results
@@ -70,8 +71,11 @@ def main():
     parser.add_argument("--mode", type=str, default="crossval", choices=["crossval", "visualize_data"])
     args = parser.parse_args()
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
     if args.mode == "crossval":
-        run_crossval()
+        run_crossval(device)
     elif args.mode == "visualize_data":
         run_visualize_data()
 

@@ -97,9 +97,8 @@ def evaluate_on_volumes(model, val_dataset, device, fold=0):
     return mean_results
 
 
-def train_fold(train_loader, val_loader, val_dataset, fold=0):
+def train_fold(train_loader, val_loader, val_dataset, fold, device):
     # Train one fold and evaluate 
-    device = config.DEVICE
 
     model = UNet2D(in_channels=4, out_channels=4).to(device)
     criterion = DiceCELoss(num_classes=4)
@@ -124,7 +123,7 @@ def train_fold(train_loader, val_loader, val_dataset, fold=0):
 
     # Load best and evaluate on volumes
     print(f"Evaluating fold {fold + 1} on volumes...")
-    model = load_checkpoint(UNet2D(in_channels=4, out_channels=4).to(device), ckpt_path)
+    model = load_checkpoint(UNet2D(in_channels=4, out_channels=4).to(device), ckpt_path, device)
     mean_results = evaluate_on_volumes(model, val_dataset, device, fold)
 
     for name in region_names:
