@@ -7,6 +7,7 @@ import config
 from models.unet2d import UNet2D
 from training.losses import DiceCELoss
 from utils.utils import save_checkpoint, load_checkpoint, evaluate_volume, plot_sample, region_names
+from data.dataset import get_transforms
 
 
 def train_single_epoch(model, loader, criterion, optimizer, device):
@@ -52,13 +53,14 @@ def validate_single_epoch(model, loader, criterion, device):
 def evaluate_on_volumes(model, val_dataset, device, fold=0):
     # Make a prediction on all slices per volume and save figures
     model.eval()
-    volume_ds = val_dataset.volume_ds
+    transform = get_transforms()
+    val_dicts = val_dataset.val_dicts
     all_results = []
 
     with torch.no_grad():
         # Loop on validation volumes
-        for vol_idx in range(len(volume_ds)):
-            vol = volume_ds[vol_idx]
+        for vol_idx in range(len(val_dicts)):
+            vol = transform(val_dicts[vol_idx])
             image = vol["image"]
             ground_truth = vol["label"][0].numpy().astype(int)
             num_slices = image.shape[-1]
@@ -97,7 +99,7 @@ def evaluate_on_volumes(model, val_dataset, device, fold=0):
 
 def train_fold(train_loader, val_loader, val_dataset, fold=0):
     # Train one fold and evaluate 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = config.DEVICE
 
     model = UNet2D(in_channels=4, out_channels=4).to(device)
     criterion = DiceCELoss(num_classes=4)
