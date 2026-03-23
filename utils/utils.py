@@ -1,6 +1,8 @@
 import os
 import numpy as np
 import torch
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from medpy.metric.binary import hd95
 
@@ -22,11 +24,11 @@ def labels_to_regions(label_map):
     """
     Converting integer label map to binary masks for regions WT, TC, ET
     WT (labels 1,2,4 in BraTS) = labels 1,2,3 in dataset = all tumor
-    TC (labels 1,4 in BraTS) = labels 2,3 in dataset = non-enhancing and enhancing
+    TC (labels 1,4 in BraTS) = labels 1,3 in dataset = necrotic and enhancing
     ET (label 4 in BraTS) = label 3 in dataset = enhancing only
     """
     wt = (label_map > 0).astype(np.uint8)
-    tc = ((label_map == 2) | (label_map == 3)).astype(np.uint8)
+    tc = ((label_map == 1) | (label_map == 3)).astype(np.uint8)
     et = (label_map == 3).astype(np.uint8)
     return {"WT": wt, "TC": tc, "ET": et}
  
@@ -112,5 +114,4 @@ def plot_sample(image, gt, pred=None, slice_idx=None, save_path=None):
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
-    plt.show()
     plt.close()

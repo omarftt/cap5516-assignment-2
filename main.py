@@ -1,11 +1,11 @@
 from data.dataset import get_file_list, get_fold_dataloaders
 from training.trainer import train_fold
-from utils.utils import region_names
+from utils.utils import region_names, plot_sample
+from monai.transforms import Compose, LoadImaged, EnsureChannelFirstd, Orientationd
 
 import numpy as np
 import os
 import argparse
-import shutil
 
 import config
 
@@ -34,20 +34,35 @@ def run_crossval():
 
 
 def run_visualize_data():
-    # Extracting some raw samples for ITK-SNAP tool
+    # Generating visualization figures for MRI samples and segmentation masks
+
     data_dicts = get_file_list(config.DATA_DIR)
-    samples_dir = os.path.join(config.OUTPUT_DIR, "samples")
-    os.makedirs(samples_dir, exist_ok=True)
+    vis_dir = os.path.join(config.OUTPUT_DIR, "visualizations")
+    os.makedirs(vis_dir, exist_ok=True)
+
+    # Minimal transforms just for loading
+    transform = Compose([
+        LoadImaged(keys=["image", "label"]),
+        EnsureChannelFirstd(keys=["image", "label"]),
+        Orientationd(keys=["image", "label"], axcodes="RAS"),
+    ])
 
     for i in range(3):
-        src_img = data_dicts[i]["image"]
-        src_lbl = data_dicts[i]["label"]
-        name = os.path.basename(src_img).replace(".nii.gz", "")
+        vol = transform(data_dicts[i])
+        image = vol["image"]
+        label = vol["label"][0].numpy().astype(int)
+        mid = image.shape[-1] // 2
 
-        shutil.copy2(src_img, os.path.join(samples_dir, f"{name}_image.nii.gz"))
-        shutil.copy2(src_lbl, os.path.join(samples_dir, f"{name}_label.nii.gz"))
+        save_path = os.path.join(vis_dir,f"sample_{i}_slice{mid}.png")
+        plot_sample(
+            image[:, :, :, mid].numpy(),
+            label[:, :, mid],
+            pred=None,
+            slice_idx=mid,
+            save_path=save_path,
+        )
 
-    print(f"Saved 3 samples to {os.path.abspath(samples_dir)}")
+    print(f"Saved on {os.path.abspath(vis_dir)}")
 
 
 def main():

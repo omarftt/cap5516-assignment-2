@@ -1,4 +1,3 @@
-
 import torch
 import numpy as np
 import os
@@ -102,20 +101,22 @@ def train_fold(train_loader, val_loader, val_dataset, fold=0):
     model = UNet2D(in_channels=4, out_channels=4).to(device)
     criterion = DiceCELoss(num_classes=4)
     optimizer = torch.optim.Adam(model.parameters(), lr=config.LEARNING_RATE, weight_decay=config.WEIGHT_DECAY)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.NUM_EPOCHS)
     ckpt_path = os.path.join(config.CHECKPOINT_DIR, f"best_model_fold{fold}.pth")
 
-    best_val_acc = 0.0
+    best_val_loss = float("inf")
     print(f"Training fold {fold + 1}")
     for epoch in range(config.NUM_EPOCHS):
         train_loss = train_single_epoch(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc = validate_single_epoch(model, val_loader, criterion, device)
+        scheduler.step()
 
         print(f"Epoch {epoch + 1}/{config.NUM_EPOCHS}")
         print(f"Train loss: {train_loss:.4f}, validation loss:{val_loss:.4f}, validation acc:{val_acc:.4f}")
 
         # If there is new best model, save it
-        if val_acc > best_val_acc:
-            best_val_acc = val_acc
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
             save_checkpoint(model, ckpt_path)
             print("New model saved")
 
