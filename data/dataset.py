@@ -94,7 +94,7 @@ class PreprocessedSliceDataset(Dataset):
         return len(self.slice_files)
 
     def __getitem__(self, idx):
-        data = torch.load(self.slice_files[idx], weights_only=True)
+        data = torch.load(self.slice_files[idx], weights_only=False)
         return data["image"], data["label"].long()
 
 
