@@ -48,7 +48,7 @@ class BraTSSliceDataset(Dataset):
         print(f"Loading {len(data_dicts)} volumes...")
         self.volume_ds = CacheDataset(
             data_dicts, transform,
-            cache_rate=1.0,
+            cache_rate=0.25,
             num_workers=config.NUM_WORKERS,
         )
 
