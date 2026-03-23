@@ -97,7 +97,7 @@ def evaluate_on_volumes(model, val_dataset, device, fold=0):
 
 def train_fold(train_loader, val_loader, val_dataset, fold=0):
     # Train one fold and evaluate 
-    device = config.DEVICE
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = UNet2D(in_channels=4, out_channels=4).to(device)
     criterion = DiceCELoss(num_classes=4)
