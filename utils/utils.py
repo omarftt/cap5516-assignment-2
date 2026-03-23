@@ -21,12 +21,13 @@ def load_checkpoint(model, path, device):
 def labels_to_regions(label_map):
     """
     Converting integer label map to binary masks for regions WT, TC, ET
-    WT (labels 1,2,4 in BraTS) = labels 1,2,3 in dataset = all tumor
-    TC (labels 1,4 in BraTS) = labels 1,3 in dataset = necrotic and enhancing
-    ET (label 4 in BraTS) = label 3 in dataset = enhancing only
+    Dataset labels: 0=bg, 1=edema, 2=non-enhancing tumor, 3=enhancing tumor
+    WT (all tumor) = labels 1, 2, 3
+    TC (tumor core) = labels 2, 3 (non-enhancing + enhancing)
+    ET (enhancing tumor) = label 3
     """
     wt = (label_map > 0).astype(np.uint8)
-    tc = ((label_map == 1) | (label_map == 3)).astype(np.uint8)
+    tc = ((label_map == 2) | (label_map == 3)).astype(np.uint8)
     et = (label_map == 3).astype(np.uint8)
     return {"WT": wt, "TC": tc, "ET": et}
  
