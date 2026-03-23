@@ -9,10 +9,6 @@ from monai.transforms import (
     EnsureChannelFirstd,
     NormalizeIntensityd,
     Orientationd,
-    RandFlipd,
-    RandRotate90d,
-    RandScaleIntensityd,
-    RandShiftIntensityd,
 )
 from monai.data import CacheDataset
 
@@ -33,23 +29,8 @@ def get_file_list(data_dir):
     return data_dicts
 
 
-def get_train_transforms():
-    # MONAI transforms for training (preprocessing and data augmentation)
-    return Compose([
-        LoadImaged(keys=["image", "label"]),
-        EnsureChannelFirstd(keys=["image", "label"]),
-        Orientationd(keys=["image", "label"], axcodes="RAS"),
-        NormalizeIntensityd(keys=["image"], channel_wise=True, nonzero=True),
-        RandFlipd(keys=["image", "label"], spatial_axis=0, prob=0.5),
-        RandFlipd(keys=["image", "label"], spatial_axis=1, prob=0.5),
-        RandRotate90d(keys=["image", "label"], prob=0.5, spatial_axes=(0, 1)),
-        RandScaleIntensityd(keys=["image"], factors=0.1, prob=0.5),
-        RandShiftIntensityd(keys=["image"], offsets=0.1, prob=0.5),
-    ])
-
-
-def get_val_transforms():
-    # MONAI transforms for validation (preprocessing only)
+def get_transforms():
+    # MONAI transforms for volume preprocessing
     return Compose([
         LoadImaged(keys=["image", "label"]),
         EnsureChannelFirstd(keys=["image", "label"]),
@@ -105,9 +86,9 @@ def get_fold_dataloaders(fold, data_dicts):
     train_idx,val_idx = splits[fold]
     train_dicts = [data_dicts[i] for i in train_idx]
     validation_dicts = [data_dicts[i] for i in val_idx]
-    
-    train_dataset = BraTSSliceDataset(train_dicts, get_train_transforms())
-    val_dataset = BraTSSliceDataset(validation_dicts, get_val_transforms())
+
+    train_dataset = BraTSSliceDataset(train_dicts, get_transforms())
+    val_dataset = BraTSSliceDataset(validation_dicts, get_transforms())
 
     train_loader = DataLoader(train_dataset, batch_size=config.BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=config.BATCH_SIZE, shuffle=False)
