@@ -5,7 +5,7 @@
 ## Setup
 
 ```bash
-pip install torch monai scikit-learn medpy matplotlib nibabel
+pip install torch monai scikit-learn medpy matplotlib nibabel tqdm
 ```
 
 ## Dataset

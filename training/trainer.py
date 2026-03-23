@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import os
+from tqdm import tqdm
 
 import config
 from models.unet2d import UNet2D
@@ -96,7 +97,7 @@ def evaluate_on_volumes(model, val_dataset, device, fold=0):
 
 def train_fold(train_loader, val_loader, val_dataset, fold=0):
     # Train one fold and evaluate 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = config.DEVICE
 
     model = UNet2D(in_channels=4, out_channels=4).to(device)
     criterion = DiceCELoss(num_classes=4)
@@ -106,19 +107,18 @@ def train_fold(train_loader, val_loader, val_dataset, fold=0):
 
     best_val_loss = float("inf")
     print(f"Training fold {fold + 1}")
-    for epoch in range(config.NUM_EPOCHS):
+    pbar = tqdm(range(config.NUM_EPOCHS), desc=f"Fold {fold+1}")
+    for epoch in pbar:
         train_loss = train_single_epoch(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc = validate_single_epoch(model, val_loader, criterion, device)
         scheduler.step()
 
-        print(f"Epoch {epoch + 1}/{config.NUM_EPOCHS}")
-        print(f"Train loss: {train_loss:.4f}, validation loss:{val_loss:.4f}, validation acc:{val_acc:.4f}")
+        pbar.set_postfix(train_loss=f"{train_loss:.4f}", val_loss=f"{val_loss:.4f}", val_acc=f"{val_acc:.4f}")
 
         # If there is new best model, save it
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             save_checkpoint(model, ckpt_path)
-            print("New model saved")
 
     # Load best and evaluate on volumes
     print(f"Evaluating fold {fold + 1} on volumes...")
