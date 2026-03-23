@@ -47,12 +47,13 @@ def preprocess_slices(data_dicts):
 
     # If already preprocessed not run again
     if os.path.exists(PREPROCESSED_DIR) and len(os.listdir(PREPROCESSED_DIR)) > 0:
+        print(f"Preprocessed slices already exist")
         return
-    
+
     os.makedirs(PREPROCESSED_DIR, exist_ok=True)
     transform = get_transforms()
 
-    print("Preprocessing volumes to 2D slices")
+    print("Preprocessing volumes to 2D slices (one-time operation)...")
     for vol_idx, data_dict in enumerate(tqdm(data_dicts, desc="Volumes")):
         vol = transform(data_dict)
         image = vol["image"]
@@ -65,12 +66,12 @@ def preprocess_slices(data_dicts):
 
             # To avoid many useless slices
             if brain_frac > config.MIN_BRAIN_FRACTION:
-                img_slice = slice_data
-                lbl_slice = label[0, :, :, s].long()
+                img_slice = slice_data.clone().detach().float()
+                lbl_slice = label[0, :, :, s].clone().detach().byte()
                 save_path = os.path.join(PREPROCESSED_DIR, f"vol{vol_idx:04d}_s{s:04d}.pt")
                 torch.save({"image": img_slice, "label": lbl_slice}, save_path)
 
-    print(f"Preprocessing done")
+    print(f"Preprocessing done. Saved to {PREPROCESSED_DIR}")
 
 
 class PreprocessedSliceDataset(Dataset):
@@ -94,7 +95,7 @@ class PreprocessedSliceDataset(Dataset):
 
     def __getitem__(self, idx):
         data = torch.load(self.slice_files[idx], weights_only=True)
-        return data["image"], data["label"]
+        return data["image"], data["label"].long()
 
 
 def get_fold_dataloaders(fold, data_dicts):
