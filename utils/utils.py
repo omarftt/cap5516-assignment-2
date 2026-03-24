@@ -22,9 +22,9 @@ def labels_to_regions(label_map):
     """
     Converting integer label map to binary masks for regions WT, TC, ET
     Dataset labels: 0=bg, 1=edema, 2=non-enhancing tumor, 3=enhancing tumor
-    WT (all tumor) = labels 1, 2, 3
-    TC (tumor core) = labels 2, 3 (non-enhancing + enhancing)
-    ET (enhancing tumor) = label 3
+    WT (all tumor)= labels 1, 2, 3
+    TC (tumor core)= labels 2, 3 (non-enhancing and enhancing)
+    ET (enhancing tumor)= label 3
     """
     wt = (label_map > 0).astype(np.uint8)
     tc = ((label_map == 2) | (label_map == 3)).astype(np.uint8)
@@ -107,6 +107,48 @@ def plot_sample(image, gt, pred=None, slice_idx=None, save_path=None):
         axes[5].axis("off")
 
     title = f"Slice {slice_idx}" if slice_idx is not None else "BraTS Sample"
+    fig.suptitle(title)
+    plt.tight_layout()
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+    plt.close()
+
+
+def plot_regions(image, gt, pred, slice_idx=None, save_path=None):
+    # Plot MRI modalities and GT vs Pred for WT, TC, ET regions
+    from matplotlib.gridspec import GridSpec
+
+    gt_regions = labels_to_regions(gt)
+    pred_regions = labels_to_regions(pred)
+
+    fig = plt.figure(figsize=(12, 12))
+    gs = GridSpec(4, 4, figure=fig)
+
+    # 4 MRI modalities
+    modality_names = ["FLAIR", "T1w", "T1gd", "T2w"]
+    for i in range(4):
+        ax = fig.add_subplot(gs[0, i])
+        ax.imshow(image[i], cmap="gray")
+        ax.set_title(modality_names[i])
+        ax.axis("off")
+
+    # GT and Pred for each region
+    for row, name in enumerate(region_names):
+        ax_gt = fig.add_subplot(gs[row + 1, 1])
+        ax_gt.imshow(image[0], cmap="gray", alpha=0.3)
+        ax_gt.imshow(gt_regions[name], cmap="Reds", alpha=0.7)
+        ax_gt.set_title(f"GT {name}")
+        ax_gt.axis("off")
+
+        ax_pred = fig.add_subplot(gs[row + 1, 2])
+        ax_pred.imshow(image[0], cmap="gray", alpha=0.3)
+        ax_pred.imshow(pred_regions[name], cmap="Reds", alpha=0.7)
+        ax_pred.set_title(f"Pred {name}")
+        ax_pred.axis("off")
+
+    title = f"Region Comparison"
     fig.suptitle(title)
     plt.tight_layout()
 

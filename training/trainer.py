@@ -7,7 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 import config
 from models.unet2d import UNet2D
 from training.losses import DiceCELoss
-from utils.utils import save_checkpoint, load_checkpoint, evaluate_volume, plot_sample, region_names
+from utils.utils import save_checkpoint, load_checkpoint, evaluate_volume, plot_sample, plot_regions, region_names
 from data.dataset import get_transforms
 
 
@@ -33,8 +33,9 @@ def train_single_epoch(model, loader, criterion, optimizer, device, epoch, num_e
 def validate_single_epoch(model, loader, criterion, device, epoch, num_epochs):
     model.eval()
     total_loss = 0.0
-    correct = 0
-    total = 0
+    num_classes = 4
+    dice_sum = torch.zeros(num_classes)
+    dice_count = torch.zeros(num_classes)
 
     for images, labels in tqdm(loader, desc=f"  Epoch {epoch+1}/{num_epochs} [Val]", leave=False):
         images = images.to(device)
@@ -42,13 +43,23 @@ def validate_single_epoch(model, loader, criterion, device, epoch, num_epochs):
 
         outputs = model(images)
         loss = criterion(outputs, labels)
+        total_loss += loss.item()*images.size(0)
 
-        total_loss += loss.item() * images.size(0)
+        # Compute per-class Dice on this batch
         preds = outputs.argmax(dim=1)
-        correct += (preds == labels).sum().item()
-        total += labels.numel()
+        for c in range(num_classes):
+            pred_c = (preds==c).float()
+            gt_c = (labels==c).float()
+            intersection = (pred_c*gt_c).sum()
+            union = pred_c.sum() + gt_c.sum()
+            if union > 0:
+                dice_sum[c] += (2.0*intersection/union).item()
+                dice_count[c] += 1
 
-    return total_loss / len(loader.dataset), correct / total
+    # Mean Dice across classes (skip background class 0)
+    mean_dice = (dice_sum[1:] / dice_count[1:].clamp(min=1)).mean().item()
+
+    return total_loss / len(loader.dataset), mean_dice
 
 
 def evaluate_on_volumes(model, val_dataset, device, fold=0):
@@ -89,11 +100,23 @@ def evaluate_on_volumes(model, val_dataset, device, fold=0):
                     slice_idx=mid,
                     save_path=save_path,
                 )
+                regions_path = os.path.join(config.FIGURES_DIR, f"fold{fold}_vol{vol_idx}_slice{mid}_regions.png")
+                plot_regions(
+                    image[:, :, :, mid].numpy(),
+                    ground_truth[:, :, mid],
+                    pred_volume[:, :, mid],
+                    slice_idx=mid,
+                    save_path=regions_path,
+                )
 
     # Average across volumes
     mean_results = {}
     for key in all_results[0]:
-        mean_results[key] = np.mean([r[key] for r in all_results])
+        values = [r[key] for r in all_results]
+        if "HD95" in key:
+            mean_results[key] = np.nanmean(values)
+        else:
+            mean_results[key] = np.mean(values)
 
     return mean_results
 
@@ -114,14 +137,14 @@ def train_fold(train_loader, val_loader, val_dataset, fold, device):
     print(f"Training fold {fold + 1}")
     for epoch in range(config.NUM_EPOCHS):
         train_loss = train_single_epoch(model, train_loader, criterion, optimizer, device, epoch, config.NUM_EPOCHS)
-        val_loss, val_acc = validate_single_epoch(model, val_loader, criterion, device, epoch, config.NUM_EPOCHS)
+        val_loss, val_dice = validate_single_epoch(model, val_loader, criterion, device, epoch, config.NUM_EPOCHS)
         scheduler.step()
 
         writer.add_scalar("Loss/train", train_loss, epoch)
         writer.add_scalar("Loss/val", val_loss, epoch)
-        writer.add_scalar("Accuracy/val", val_acc, epoch)
+        writer.add_scalar("Dice/val", val_dice, epoch)
 
-        print(f"  Epoch {epoch+1}/{config.NUM_EPOCHS}, train_loss={train_loss:.4f} val_loss={val_loss:.4f} val_acc={val_acc:.4f}")
+        print(f"  Epoch {epoch+1}/{config.NUM_EPOCHS}, train_loss={train_loss:.4f} val_loss={val_loss:.4f} val_dice={val_dice:.4f}")
 
         # If there is new best model, save it
         if val_loss < best_val_loss:
@@ -135,7 +158,7 @@ def train_fold(train_loader, val_loader, val_dataset, fold, device):
                 break
 
     # Load best and evaluate on volumes
-    print(f"Evaluating fold {fold + 1} on volumes...")
+    print(f"Evaluating fold {fold + 1}")
     model = load_checkpoint(UNet2D(in_channels=4, out_channels=4).to(device), ckpt_path, device)
     mean_results = evaluate_on_volumes(model, val_dataset, device, fold)
 
