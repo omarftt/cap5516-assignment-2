@@ -112,17 +112,16 @@ def train_fold(train_loader, val_loader, val_dataset, fold, device):
     log_dir = os.path.join(config.OUTPUT_DIR, "runs", f"fold{fold}")
     writer = SummaryWriter(log_dir=log_dir)
     print(f"Training fold {fold + 1}")
-    pbar = tqdm(range(config.NUM_EPOCHS), desc=f"Fold {fold+1}")
-    for epoch in pbar:
-        train_loss = train_single_epoch(model, train_loader, criterion, optimizer, device)
-        val_loss, val_acc = validate_single_epoch(model, val_loader, criterion, device)
+    for epoch in range(config.NUM_EPOCHS):
+        train_loss = train_single_epoch(model, train_loader, criterion, optimizer, device, epoch, config.NUM_EPOCHS)
+        val_loss, val_acc = validate_single_epoch(model, val_loader, criterion, device, epoch, config.NUM_EPOCHS)
         scheduler.step()
 
         writer.add_scalar("Loss/train", train_loss, epoch)
         writer.add_scalar("Loss/val", val_loss, epoch)
         writer.add_scalar("Accuracy/val", val_acc, epoch)
 
-        pbar.set_postfix(train_loss=f"{train_loss:.4f}", val_loss=f"{val_loss:.4f}", val_acc=f"{val_acc:.4f}")
+        print(f"  Epoch {epoch+1}/{config.NUM_EPOCHS}, train_loss={train_loss:.4f} val_loss={val_loss:.4f} val_acc={val_acc:.4f}")
 
         # If there is new best model, save it
         if val_loss < best_val_loss:
