@@ -1,4 +1,4 @@
-# Brain Tumor Segmentation—CAP 5516 Assignment 2
+# Brain Tumor Segmentation - PA 2
 
 2D U-Net for brain tumor segmentation on the BraTS dataset with 5-fold cross-validation.
 
