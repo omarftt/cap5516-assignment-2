@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import os
 from tqdm import tqdm
+from torch.utils.tensorboard import SummaryWriter
 
 import config
 from models.unet2d import UNet2D
@@ -107,6 +108,10 @@ def train_fold(train_loader, val_loader, val_dataset, fold, device):
     ckpt_path = os.path.join(config.CHECKPOINT_DIR, f"best_model_fold{fold}.pth")
 
     best_val_loss = float("inf")
+    patience_counter = 0
+    log_dir = os.path.join(config.OUTPUT_DIR, "runs", f"fold{fold}")
+    writer = SummaryWriter(log_dir=log_dir)
+    
     print(f"Training fold {fold + 1}")
     pbar = tqdm(range(config.NUM_EPOCHS), desc=f"Fold {fold+1}")
     for epoch in pbar:
@@ -114,12 +119,22 @@ def train_fold(train_loader, val_loader, val_dataset, fold, device):
         val_loss, val_acc = validate_single_epoch(model, val_loader, criterion, device)
         scheduler.step()
 
+        writer.add_scalar("Loss/train", train_loss, epoch)
+        writer.add_scalar("Loss/val", val_loss, epoch)
+        writer.add_scalar("Accuracy/val", val_acc, epoch)
+
         pbar.set_postfix(train_loss=f"{train_loss:.4f}", val_loss=f"{val_loss:.4f}", val_acc=f"{val_acc:.4f}")
 
         # If there is new best model, save it
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            patience_counter = 0
             save_checkpoint(model, ckpt_path)
+        else:
+            patience_counter += 1
+            if patience_counter >= 10:
+                print(f"Early stopping at epoch {epoch + 1}")
+                break
 
     # Load best and evaluate on volumes
     print(f"Evaluating fold {fold + 1} on volumes...")
@@ -128,5 +143,8 @@ def train_fold(train_loader, val_loader, val_dataset, fold, device):
 
     for name in region_names:
         print(f"{name}: Dice={mean_results[f'Dice_{name}']:.4f}, HD95={mean_results[f'HD95_{name}']:.2f}")
+        writer.add_scalar(f"Dice/{name}", mean_results[f"Dice_{name}"], fold)
+        writer.add_scalar(f"HD95/{name}", mean_results[f"HD95_{name}"], fold)
 
+    writer.close()
     return mean_results
