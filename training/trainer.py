@@ -11,10 +11,10 @@ from utils.utils import save_checkpoint, load_checkpoint, evaluate_volume, plot_
 from data.dataset import get_transforms
 
 
-def train_single_epoch(model, loader, criterion, optimizer, device):
+def train_single_epoch(model, loader, criterion, optimizer, device, epoch, num_epochs):
     model.train()
     total_loss = 0.0
-    for images, labels in loader:
+    for images, labels in tqdm(loader, desc=f"  Epoch {epoch+1}/{num_epochs} [Train]", leave=False):
         images = images.to(device)
 
         labels = labels.to(device)
@@ -30,13 +30,13 @@ def train_single_epoch(model, loader, criterion, optimizer, device):
 
 
 @torch.no_grad()
-def validate_single_epoch(model, loader, criterion, device):
+def validate_single_epoch(model, loader, criterion, device, epoch, num_epochs):
     model.eval()
     total_loss = 0.0
     correct = 0
     total = 0
 
-    for images, labels in loader:
+    for images, labels in tqdm(loader, desc=f"  Epoch {epoch+1}/{num_epochs} [Val]", leave=False):
         images = images.to(device)
         labels = labels.to(device)
 
@@ -111,7 +111,6 @@ def train_fold(train_loader, val_loader, val_dataset, fold, device):
     patience_counter = 0
     log_dir = os.path.join(config.OUTPUT_DIR, "runs", f"fold{fold}")
     writer = SummaryWriter(log_dir=log_dir)
-    
     print(f"Training fold {fold + 1}")
     pbar = tqdm(range(config.NUM_EPOCHS), desc=f"Fold {fold+1}")
     for epoch in pbar:
@@ -132,7 +131,7 @@ def train_fold(train_loader, val_loader, val_dataset, fold, device):
             save_checkpoint(model, ckpt_path)
         else:
             patience_counter += 1
-            if patience_counter >= 10:
+            if patience_counter >= 6:
                 print(f"Early stopping at epoch {epoch + 1}")
                 break
 
