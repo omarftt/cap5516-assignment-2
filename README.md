@@ -33,19 +33,19 @@ python main.py --mode crossval
 ## Project Structure
 
 ```
-├── config.py              # Hyperparameters and paths
-├── main.py                # Entry point
-├── data/dataset.py        # Data loading, augmentation, 2D slice extraction
-├── models/unet2d.py       # 2D U-Net architecture
-├── training/losses.py     # Dice + CrossEntropy combined loss
-├── training/trainer.py    # Training loop, evaluation
-├── utils/utils.py         # Metrics (Dice, HD95), visualization
+├── config.py
+├── main.py 
+├── data/dataset.py
+├── models/unet2d.py
+├── training/losses.py
+├── training/trainer.py
+├── utils/utils.py
 └── README.md
 ```
 
 ## Outputs
 
 Results are saved to `./outputs/`:
-- `checkpoints/` — best model weights per fold
-- `figures/` — segmentation examples (prediction vs ground truth)
-- `visualizations/` — raw data visualization samples
+- `checkpoints/` for best model weights per fold
+- `figures/` for segmentation examples (prediction vs ground truth)
+- `visualizations/` for raw data visualization samples
